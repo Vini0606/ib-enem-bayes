@@ -26,6 +26,16 @@ def test_mle_recovers_truth_and_fisher_matches_numeric(data):
     np.testing.assert_allclose(m.fisher_obs, m.fisher_numeric, rtol=1e-3, atol=1e-8)
 
 
+def test_r2_matches_statsmodels(data):
+    import statsmodels.api as sm
+
+    y, X, _ = data
+    m = fit_mle(y, X)
+    ols = sm.OLS(y, X).fit()
+    assert m.r2 == pytest.approx(ols.rsquared, rel=1e-10)
+    assert m.r2_adj == pytest.approx(ols.rsquared_adj, rel=1e-10)
+
+
 def test_jeffreys_posterior_centered_at_mle(data):
     y, X, _ = data
     post = jeffreys_prior(4).update(y, X)

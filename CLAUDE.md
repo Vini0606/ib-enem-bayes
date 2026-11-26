@@ -71,8 +71,23 @@ Configurações do analista (amostra, cadeias, n0, perfis de predição): `ib_en
 
 - `data/raw/` é imutável; nunca editar os zips do INEP.
 - Se `data/interim/SIMULATED` existir, os resultados são sintéticos: avise e não interprete como reais.
-- Os números do relatório vêm de `reports/tables/` via `reports/_common.py`; não digite números à mão no `.qmd`.
+- Os números do relatório e dos slides vêm de `reports/tables/` via `reports/_common.py`; não digite
+  números à mão no `.qmd`, nem em títulos de slide (use `{python}` inline).
+- Exceção: as seções "Principais resultados" e "Onde conferir" do `README.md` são estáticas. Se
+  `make train` mudar os resultados, atualize-as contra os CSVs.
 - Após mudar código em `ib_enem_bayes/`, rode `make test` e `ruff check ib_enem_bayes`.
+
+## Formato dos entregáveis
+
+- `reports/relatorio.qmd` é uma **nota técnica acadêmica** (IMRaD): Resumo → Introdução (com a
+  tabela que mapeia as Etapas A–E para as seções) → Dados → Métodos → Resultados → Discussão →
+  Conclusões → Referências → Apêndices (A: diagnósticos completos; B: uso do pacote, onde ficam os
+  trechos de código; C: código-fonte). Equações importantes têm rótulo `{#eq-...}`; a citação usa
+  `references.bib` + `abnt.csl` (ABNT). Código não aparece no corpo (`echo: false`), só no apêndice.
+  Ao mudar seções, atualize a tabela `tbl-mapa` e a tabela "Onde conferir" do README.
+- `reports/slides.qmd` tem **linguagem de produto** no fluxo principal: títulos que já trazem a
+  conclusão, números em destaque (`kpis(...)`), sem fórmulas nem jargão (R̂, ESS, WAIC, HPD →
+  "faixa provável"). O conteúdo técnico fica no **apêndice técnico**, depois do slide "Obrigado".
 
 ## Roteiro de análise dos resultados reais
 
@@ -89,8 +104,8 @@ Depois de `make train`, verifique e reporte, nesta ordem:
    desajustes (assimetria, piso da escala TRI).
 7. **Etapa E**: `E_lado_a_lado.csv`, `E_criterios_informacao.csv` (pareto_k_max < 0,7?) e `figures/E_assintotico.png`.
 8. Releia **todo** o texto interpretativo de `reports/relatorio.qmd` e `reports/slides.qmd`, sobretudo
-   Introdução, interpretação do EMV, Etapa D e Conclusões. Algumas frases foram escritas antes dos
-   resultados reais: confirme cada afirmação contra as tabelas e corrija o que não se sustentar.
+   Resumo, Resultados (4.1 e 4.4), Discussão, Conclusões e os títulos-conclusão dos slides; confirme
+   cada afirmação contra as tabelas e corrija o que não se sustentar. Atualize os números do README.
 9. `make report`, abra os PDFs e confira: tabelas sem estouro de margem, figuras legíveis, sem aviso de simulado.
 10. Faça commit dos resultados finais. Tabelas, figuras e PDFs já são versionados; os dados e as
     cadeias `models/*.npy` continuam ignorados.

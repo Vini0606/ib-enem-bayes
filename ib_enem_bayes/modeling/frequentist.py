@@ -63,6 +63,8 @@ class MLEResult:
     n: int
     p: int
     loglik_max: float
+    rss: float  # SQR = soma dos quadrados dos resíduos
+    tss: float  # SQT = soma dos quadrados em torno da média de Y
     XtX_inv: np.ndarray = field(repr=False)
 
     @property
@@ -80,6 +82,31 @@ class MLEResult:
     @property
     def bic(self) -> float:
         return -2 * self.loglik_max + np.log(self.n) * (self.p + 1)
+
+    @property
+    def r2(self) -> float:
+        """Coeficiente de determinação R² = 1 - SQR/SQT (modelo com intercepto)."""
+        return 1 - self.rss / self.tss
+
+    @property
+    def r2_adj(self) -> float:
+        """R² ajustado = 1 - [SQR/(n-p)] / [SQT/(n-1)]."""
+        return 1 - (self.rss / (self.n - self.p)) / (self.tss / (self.n - 1))
+
+    def fit_table(self) -> pd.DataFrame:
+        """Medidas globais de ajuste do modelo."""
+        return pd.DataFrame(
+            {
+                "valor": [
+                    self.n,
+                    self.r2,
+                    self.r2_adj,
+                    np.sqrt(self.sigma2_hat),
+                    np.sqrt(self.tss / (self.n - 1)),
+                ]
+            },
+            index=["n", "r2", "r2_ajustado", "sigma_hat", "dp_y"],
+        )
 
     def table(self, level: float = 0.95) -> pd.DataFrame:
         """Estimativas, EP (Fisher observada) e IC de Wald a 95%."""
@@ -143,5 +170,7 @@ def fit_mle(y: np.ndarray, X: np.ndarray) -> MLEResult:
         n=n,
         p=p,
         loglik_max=loglik(theta, y, X),
+        rss=rss,
+        tss=float(np.sum((y - y.mean()) ** 2)),
         XtX_inv=XtX_inv,
     )

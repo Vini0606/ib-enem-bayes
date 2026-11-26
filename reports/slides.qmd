@@ -1,7 +1,7 @@
 ---
-title: "Bayes vs. Frequentista na nota de Matemática do ENEM"
-subtitle: "Regressão linear Normal–Gama: EMV, posteriori exata, MCMC e preditiva"
-author: "Vinicius de Paula Ribeiro — Inferência Bayesiana"
+title: "O que explica a nota de Matemática no ENEM?"
+subtitle: "Renda, escola e família: quanto cada fator pesa e quanto podemos confiar nisso"
+author: "Vinicius de Paula Ribeiro — Inferência Bayesiana (CIA044), IESB"
 date: today
 date-format: "DD/MM/YYYY"
 lang: pt-BR
@@ -11,6 +11,7 @@ format:
     aspectratio: 169
     theme: metropolis
     fontsize: 10pt
+    slide-level: 2
     include-in-header:
       text: |
         \newcommand{\bm}[1]{\symbfit{#1}}
@@ -19,6 +20,7 @@ format:
         \usepackage{newunicodechar}
         \newunicodechar{≈}{\ensuremath{\approx}}
         \newunicodechar{−}{\ensuremath{-}}
+        \newcommand{\kpi}[2]{\centering{\Huge\bfseries\alert{#1}}\\[0.5em]{\small #2}}
 jupyter: python3
 execute:
   echo: false
@@ -35,6 +37,27 @@ from ib_enem_bayes.config import N0_PRIOR, YEAR_PRIOR
 A = tab("A_emv"); PV = tab("B_posteriori_exata_vaga"); PI = tab("B_posteriori_exata_informativa")
 CONV = tab("C_convergencia").reset_index(drop=True); IC = tab("E_criterios_informacao")
 mh = CONV[CONV.amostrador == "Metropolis–Hastings"]; g = CONV[CONV.amostrador == "Gibbs"]
+AJ = tab("A_ajuste")["valor"]; HI = tab("B_hiperparametros_informativa"); DESC = tab("descritivas_amostra")
+PRED = tab("D_preditiva").reset_index(drop=True); PE = tab("A_predicao_emv")
+PV_ = PRED[PRED.cenario == "Vaga"].set_index("perfil")
+gap = PV_["media_exata"].iloc[-1] - PV_["media_exata"].iloc[0]
+PE0 = PE.iloc[0]; meia_ic = (PE0.ic_media_sup - PE0.ic_media_inf) / 2; meia_ip = (PE0.ip_sup - PE0.ip_inf) / 2
+ANO = META["ano_principal"]
+efeitos = A.loc[["beta_1", "beta_2", "beta_3"], "estimativa"]
+pm = tab("C_posteriori_mcmc")
+erro_max = max(
+    abs(pm[(pm.cenario == lab)].loc[par, "media"] - post.loc[par, "media"]).max() / post.loc[par, "dp"]
+    for lab, post in {"Vaga": PV, "Informativa": PI}.items() for par in post.index
+)
+
+def kpis(items):
+    """Linha de números em destaque: [(número, legenda), ...] -> bloco LaTeX."""
+    w = 0.95 / len(items)
+    cols = "".join(
+        f"\\begin{{column}}{{{w:.2f}\\textwidth}}\\kpi{{{big}}}{{{lab}}}\\end{{column}}"
+        for big, lab in items
+    ).replace("%", "\\%")
+    print("```{=latex}\n\\begin{columns}[T]" + cols + "\\end{columns}\n```")
 ```
 
 ```{python}
@@ -43,20 +66,172 @@ if META["simulado"]:
     print("## Aviso\n\n**Slides gerados com DADOS SIMULADOS** (`make demo`). Rode `make data train report` com os microdados do INEP.\n")
 ```
 
-## Problema e dados
+## Em uma frase
 
-- **Pergunta:** como renda familiar, tipo de escola e escolaridade da mãe se associam à nota de
-  Matemática do ENEM `{python} META["ano_principal"]`?
-- **Dados:** microdados INEP; $N =$ `{python} fmt(META["n_base_completa"],0)` participantes válidos;
-  amostra de análise $n =$ `{python} fmt(META["n_amostra"],0)`.
+**Renda, escola e escolaridade da mãe separam os perfis analisados em até `{python} fmt(gap,0)`
+pontos na média, mas explicam só `{python} fmt(100*AJ["r2"],0)`% das diferenças entre um aluno e outro.**
+
+\vspace{1em}
+
+```{python}
+#| output: asis
+kpis([
+    (fmt(META["n_base_completa"] / 1e6, 1) + " mi", f"participantes do ENEM {ANO} analisados"),
+    (f"{fmt(gap,0)} pts", "entre o perfil menos e o mais favorecido"),
+    (f"{fmt(100*AJ['r2'],0)}%", "da variação das notas explicada"),
+])
+```
+
+## A pergunta
+
+- **O que queremos saber:** quanto a renda da família, o tipo de escola e a escolaridade da mãe se
+  associam à nota de Matemática do ENEM `{python} ANO`.
+- **Por que importa:** dimensionar a desigualdade de desempenho e mostrar quanto dela esses três
+  fatores, observáveis antes da prova, conseguem explicar.
+- **Com que dados:** microdados oficiais do INEP, com `{python} fmt(META["n_base_completa"],0)`
+  participantes válidos. A edição de `{python} YEAR_PRIOR` serve como conhecimento prévio.
+- **Como respondemos:** com duas escolas de estatística (a clássica e a bayesiana) aplicadas ao mesmo
+  modelo, para ver se chegam à mesma resposta.
+
+## Cada fator, sozinho, vale de `{python} fmt(efeitos.min(),0)` a `{python} fmt(efeitos.max(),0)` pontos
+
+Comparando alunos iguais em todo o resto:
+
+\vspace{0.8em}
+
+```{python}
+#| output: asis
+kpis([
+    (f"+{fmt(A.loc['beta_1','estimativa'],0)}", "pontos a cada vez que a renda da família dobra"),
+    (f"+{fmt(A.loc['beta_2','estimativa'],0)}", "pontos para quem estuda em escola privada"),
+    (f"+{fmt(A.loc['beta_3','estimativa'],0)}", "pontos quando a mãe tem ensino superior"),
+])
+```
+
+\vspace{1em}
+
+São **associações**, não causa e efeito: os três fatores andam juntos e se misturam com outros que
+não observamos.
+
+## A nota sobe com a renda, e a escola privada já parte de um patamar mais alto
+
+![](figures/eda.png){width=95%}
+
+Nota média de `{python} fmt(DESC.loc["nota_mt","mean"],0)` pontos. `{python} fmt(100*DESC.loc["escola_privada","mean"],0)`% estudam em
+escola privada e `{python} fmt(100*DESC.loc["mae_superior","mean"],0)`% têm mãe com ensino superior.
+
+## Quatro perfis de aluno: `{python} fmt(gap,0)` pontos do primeiro ao último
+
+```{python}
+#| output: asis
+t = PV_[["media_exata", "hpd_inf_exato", "hpd_sup_exato"]].copy()
+t["Nota esperada"] = t.media_exata.map(lambda v: fmt(v, 0))
+t["Faixa provável de um aluno (95%)"] = [f"{fmt(a,0)} a {fmt(b,0)}" for a, b in zip(t.hpd_inf_exato, t.hpd_sup_exato)]
+t.index.name = "Perfil"
+print(t[["Nota esperada", "Faixa provável de um aluno (95%)"]].to_markdown())
+```
+
+\vspace{0.5em}
+
+- A nota **esperada** de cada perfil é bem definida.
+- A faixa de **um aluno** é larga: alunos com o mesmo perfil tiram notas muito diferentes.
+
+## Bom para entender grupos, fraco para prever um aluno
+
+```{python}
+#| output: asis
+kpis([
+    (f"±{fmt(meia_ic,1)}", "pontos de incerteza na média de um grupo"),
+    (f"±{fmt(meia_ip,0)}", "pontos de incerteza para um aluno individual"),
+    (f"{fmt(100*AJ['r2'],0)}%", "das diferenças entre alunos explicadas"),
+])
+```
+
+\vspace{1em}
+
+- Com `{python} fmt(META["n_base_completa"] / 1e6, 1)` milhão de participantes, sabemos com precisão **quanto cada fator pesa em média**.
+- O que define a nota de **cada aluno** está, na maior parte, fora desses três fatores.
+- Uso recomendado: comparar grupos e orientar políticas, não prever o desempenho de uma pessoa.
+
+## De `{python} YEAR_PRIOR` para `{python} ANO`, a vantagem da escola privada cresceu
+
+```{python}
+#| output: asis
+kpis([
+    (f"+{fmt(HI.loc['beta_2','m0'],0)}", f"vantagem da escola privada em {YEAR_PRIOR}"),
+    (f"+{fmt(A.loc['beta_2','estimativa'],0)}", f"vantagem medida em {ANO}"),
+    (f"+{fmt(PI.loc['beta_2','media'],0)}", "estimativa combinando os dois anos"),
+])
+```
+
+\vspace{1em}
+
+- Usamos `{python} YEAR_PRIOR` como **conhecimento prévio**, com peso equivalente a
+  `{python} N0_PRIOR` alunos.
+- Renda e escolaridade da mãe mantiveram o mesmo peso; só a escola privada mudou.
+- Os dados novos corrigiram a expectativa para cima: o método bayesiano **atualiza** o que se
+  sabia, em vez de descartá-lo.
+
+## Com dados suficientes, os dois métodos dão a mesma resposta
+
+![](figures/E_assintotico.png){width=80%}
+
+- Com poucos alunos, o conhecimento prévio estabiliza as estimativas.
+- A partir de alguns milhares, as abordagens clássica e bayesiana coincidem.
+
+## Por que confiar nos números
+
+- **Três algoritmos independentes** reproduzem a solução matemática exata: a maior diferença é de
+  `{python} fmt(100*erro_max,1)`% da incerteza.
+- **Todas as verificações de convergência** passaram: `{python} "sim" if META["todos_convergiram"] else "NÃO"`.
+- **Reprodutível:** o pipeline roda de ponta a ponta em cerca de `{python} fmt(META["tempo_s"],0)` segundos e gera as mesmas tabelas;
+  nenhum número dos slides foi digitado à mão.
+- **Validado:** testes automáticos conferem cada algoritmo.
+
+![](figures/C_exata_vs_mcmc_vaga.png){width=85%}
+
+## Onde o modelo erra
+
+![](figures/D_ppc.png){width=48%}
+
+- O modelo acerta a **média**, mas não a **forma** da distribuição das notas.
+- A escala do ENEM tem piso (nota mínima de `{python} fmt(DESC.loc["nota_mt","min"],0)`) e é assimétrica;
+  o modelo prevê notas abaixo do piso.
+
+## Próximos passos
+
+1. **Respeitar o piso da escala:** um modelo com censura ou assimétrico.
+2. **Deixar o efeito da renda variar por rede:** os dados sugerem que ele difere entre pública e
+   privada.
+3. **Incluir outros fatores:** região, cor/raça, tipo de ensino médio, para explicar mais que
+   `{python} fmt(100*AJ["r2"],0)`%.
+4. **Acompanhar a vantagem da escola privada** nas próximas edições. A partir de 2024, o INEP
+   separou questionário e notas em arquivos que não podem ser cruzados, o que limita esse
+   acompanhamento.
+
+## Obrigado
+
+**Resumo:** os três fatores importam e somam até `{python} fmt(gap,0)` pontos na média, mas explicam
+só `{python} fmt(100*AJ["r2"],0)`% das diferenças individuais. Métodos clássico e bayesiano concordam.
+
+\vspace{1em}
+
+\small Relatório técnico completo: `reports/relatorio.pdf`. Código e dados reproduzíveis no
+repositório (`make data && make train && make report`).
+
+A seguir: **apêndice técnico** para perguntas.
+
+# Apêndice técnico
+
+## Modelo
+
 - **Modelo:**
 $$
 Y_i = \beta_0 + \beta_1 \log_2(\text{renda}_i/\text{SM}) + \beta_2\,\text{privada}_i + \beta_3\,\text{mãe\_sup}_i + \varepsilon_i,
 \quad \varepsilon_i \overset{iid}{\sim} \mathcal N(0,\sigma^2)
 $$
 - $\beta_1$ = efeito de **dobrar** a renda; $\bm\theta = (\bm\beta, \sigma^2)$.
-
-![](figures/eda.png){width=85%}
+- Amostra de análise: $n =$ `{python} fmt(META["n_amostra"],0)` de $N =$ `{python} fmt(META["n_base_completa"],0)`.
 
 ## Etapa A — Máxima verossimilhança
 
@@ -71,6 +246,9 @@ $$
 EP $= \sqrt{\mathrm{diag}\,\bm J^{-1}}$; IC Wald $\hat\theta_j \pm 1{,}96\,\mathrm{EP}$.
 
 $\bm J$ analítica conferida com a Hessiana numérica.
+
+$R^2 =$ `{python} fmt(AJ["r2"],3)` ($R^2_{aj} =$ `{python} fmt(AJ["r2_ajustado"],3)`);
+$\hat\sigma \approx$ `{python} fmt(AJ["sigma_hat"],0)` pontos.
 :::
 ::: {.column width="55%"}
 ```{python}
@@ -164,7 +342,7 @@ Monte Carlo por composição: $\bm\theta^{(s)}\sim p(\bm\theta\mid\bm Y)$, depoi
 
 ![](figures/D_ppc.png){width=48%}
 
-- Réplicas põem massa abaixo do piso TRI (mín. observado `{python} fmt(tab("descritivas_amostra").loc["nota_mt","min"],0)`) e subestimam as notas entre 380 e 480.
+- Réplicas põem massa abaixo do piso TRI (mín. observado `{python} fmt(DESC.loc["nota_mt","min"],0)`) e subestimam as notas entre 380 e 480.
 - A Normal acerta a média condicional, não a forma: skew-normal, censura ou variância por escola.
 
 ## Etapa E — EMV × Bayes
@@ -174,7 +352,7 @@ Monte Carlo por composição: $\bm\theta^{(s)}\sim p(\bm\theta\mid\bm Y)$, depoi
 - Jeffreys reproduz o EMV (centro idêntico; intervalo $t_{n-p}$ vs. $z$).
 - A priori informativa encurta levemente os intervalos e puxa as estimativas na direção de $\bm m_0$,
   sobretudo $\beta_2$: `{python} fmt(A.loc["beta_2","estimativa"],1)` (EMV) $\to$ `{python} fmt(PI.loc["beta_2","media"],1)`,
-  pois em `{python} YEAR_PRIOR` a diferença privada − pública era menor (`{python} fmt(tab("B_hiperparametros_informativa").loc["beta_2","m0"],1)`).
+  pois em `{python} YEAR_PRIOR` a diferença privada − pública era menor (`{python} fmt(HI.loc["beta_2","m0"],1)`).
 
 ## Etapa E — Critérios de informação
 
@@ -189,10 +367,6 @@ print(icT.to_markdown(floatfmt=".1f").replace("nan", "—"))
 - AIC ≈ DIC ≈ WAIC ≈ LOOIC com $n$ grande; sob a priori vaga, $p_{\mathrm{WAIC}}\approx p_{\mathrm{LOO}}\approx k = 5$ (menor sob a informativa).
 - Máx. $\hat k$ de Pareto = `{python} fmt(IC["pareto_k_max"].max(),2)` < 0,7: PSIS-LOO confiável.
 - AIC/BIC avaliam $\hat{\bm\theta}$; WAIC/LOO avaliam a **preditiva inteira**.
-
-## Dominância da verossimilhança
-
-![](figures/E_assintotico.png){width=88%}
 
 ## IC de confiança × intervalo de credibilidade
 
@@ -216,14 +390,3 @@ print(icT.to_markdown(floatfmt=".1f").replace("nan", "—"))
 ::::
 
 Bernstein–von Mises: $p(\bm\theta\mid\bm Y)\approx\mathcal N(\hat{\bm\theta},\bm J(\hat{\bm\theta})^{-1})$ quando $n\to\infty$, logo os **números** convergem; a **interpretação** não.
-
-## Conclusões e reprodutibilidade
-
-- Renda, escola privada e escolaridade materna estão associadas a notas maiores; EMV e Bayes concordam com $n$ grande.
-- A conjugação NIG permite **validar** Gibbs, MH e NUTS contra a posteriori exata.
-- A preditiva a posteriori incorpora a incerteza em $\bm\theta$ e dá HPDs interpretáveis.
-- A priori importa quando $n \lesssim n_0$ e some quando $n\gg n_0$.
-- Limitação: a Normal homocedástica não capta a assimetria nem o piso da escala TRI (ver PPC).
-
-\vspace{0.5em}
-\small Repositório no padrão *Cookiecutter Data Science v2*: `make data && make train && make report`.

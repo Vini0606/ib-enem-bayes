@@ -122,6 +122,7 @@ def main(
     # ------------------------------------------------------------------ Etapa A
     mle = fit_mle(y, X)
     _save_table(mle.table(), "A_emv")
+    _save_table(mle.fit_table(), "A_ajuste")
     _save_table(
         pd.DataFrame(mle.fisher_obs, index=PARAM_NAMES, columns=PARAM_NAMES), "A_fisher_analitica"
     )

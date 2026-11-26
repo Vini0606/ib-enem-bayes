@@ -21,6 +21,73 @@ $$
 | **D** — preditiva a posteriori (forma fechada t e Monte Carlo por composição), HPD 95% | `predictive.py` |
 | **E** — EMV × Bayes lado a lado, AIC/BIC × DIC/WAIC/LOO, estudo assintótico, IC × HPD | `compare.py`, `reports/relatorio.qmd` |
 
+## Entregáveis
+
+- **[`reports/relatorio.pdf`](reports/relatorio.pdf)** é a nota técnica completa: resumo, introdução
+  com o mapa Etapas A–E → seções, dados, métodos (equações numeradas), resultados, discussão,
+  conclusões, referências ABNT e apêndices (diagnósticos completos, uso do pacote e código-fonte).
+- **[`reports/slides.pdf`](reports/slides.pdf)** é a apresentação em linguagem de produto (títulos
+  que já trazem a conclusão, números em destaque), seguida de um **apêndice técnico** com as fórmulas
+  e os diagnósticos.
+
+## Principais resultados
+
+> Retrato da rodada com os microdados reais (ENEM 2023, priori do ENEM 2022). Os valores oficiais
+> estão em `reports/tables/` e são lidos pelo relatório e pelos slides. Se o pipeline for rodado de
+> novo, confira lá.
+
+Base: 1.008.903 participantes válidos; análise MCMC numa amostra aleatória de n = 5.000.
+
+| Parâmetro | Leitura | EMV (IC 95%) | Bayes, priori informativa (HPD 95%) |
+|---|---|---|---|
+| β₀ | nota esperada: escola pública, 1 SM, mãe sem superior | 500,0 (496,4; 503,6) | 500,6 (497,2; 504,0) |
+| β₁ | variação quando a renda familiar **dobra** | +24,8 (22,3; 27,2) | +24,6 (22,4; 26,9) |
+| β₂ | escola privada vs. pública | +63,7 (55,3; 72,2) | +62,0 (54,0; 70,0) |
+| β₃ | mãe com ensino superior | +19,3 (11,7; 26,9) | +19,3 (12,2; 26,5) |
+
+**Como interpretar:**
+
+- **Etapa A (EMV):** os três fatores associam-se a notas maiores, mantidos os demais. São
+  associações, não efeitos causais. O modelo explica cerca de **26%** da variância
+  (R² = 0,255; σ̂ ≈ 105 pontos). Por isso ele estima com precisão a **média de um grupo** (IC de
+  ±3,6 pontos), mas prevê mal **um aluno** (intervalo de predição de ±207 pontos).
+- **Etapa B (posteriori exata):** sob Jeffreys, os números coincidem com o EMV, mas agora vale a
+  leitura direta "há 95% de probabilidade de β₁ estar entre 22,3 e 27,2". A priori informativa
+  (2022, peso de n₀ = 500, cerca de 9% da informação) só muda visivelmente β₂: em 2022 a vantagem da
+  escola privada era de 43,8 pontos, e a posteriori fica em 62,0.
+- **Etapa C (MCMC):** os três algoritmos convergiram (R̂ ≤ 1,008; ESS ≥ 1.062) e reproduzem a
+  posteriori exata, com diferença máxima de 0,04 DP. O Gibbs é o mais eficiente (ESS ≈ 20 mil em
+  20 mil iterações); o MH aceita 28,5% das propostas e tem ESS de cerca de 1,2 mil.
+- **Etapa D (preditiva):** um aluno de escola pública, renda de 1 SM e mãe sem superior tem nota
+  prevista de 500, com 95% de probabilidade de ficar entre 293 e 707. A checagem preditiva mostra a
+  principal limitação: a Normal não reproduz a assimetria nem o piso da escala TRI (mínimo de 328).
+- **Etapa E (comparação):** AIC (60.782,5), DIC, WAIC (60.782,6) e LOOIC praticamente coincidem, e
+  o k de Pareto máximo é 0,14 (< 0,7). Com n grande, os paradigmas convergem nos números
+  (Bernstein–von Mises) e diferem na interpretação: o IC fala do procedimento em amostras
+  repetidas, e o HPD é uma probabilidade sobre o parâmetro, dados os dados.
+
+## Onde conferir cada resultado
+
+Nenhum número do relatório ou dos slides é digitado à mão: todos vêm dos arquivos abaixo, gerados
+por `make train` (ou `python -m ib_enem_bayes.modeling.train`).
+
+| O que conferir | No relatório | Arquivo |
+|---|---|---|
+| Dados reais, tamanho da base, fonte da priori, convergência geral | Seção 2 | `reports/tables/metadata.json` (`simulado: false`) |
+| Estatísticas descritivas | Seção 2.3, Figura 1 | `descritivas_amostra.csv`, `figures/eda.png` |
+| EMV, EP de Fisher, IC 95% | Seção 4.1 | `A_emv.csv`, `A_fisher_analitica.csv`, `A_fisher_numerica.csv` |
+| R², σ̂, predição clássica | Seção 4.1 | `A_ajuste.csv`, `A_predicao_emv.csv` |
+| Priori informativa e posteriori exata | Seção 4.2 | `B_hiperparametros_informativa.csv`, `B_posteriori_exata_*.csv` |
+| Convergência (R̂, ESS, ACF) e exata × MCMC | Seção 4.3, Apêndice A | `C_convergencia.csv`, `C_posteriori_mcmc.csv`, `figures/C_*.png` |
+| Preditiva, HPD e checagem preditiva | Seção 4.4 | `D_preditiva.csv`, `figures/D_preditiva.png`, `figures/D_ppc.png` |
+| EMV × Bayes, critérios de informação | Seções 4.5 e 4.6 | `E_lado_a_lado.csv`, `E_criterios_informacao.csv` |
+| Estudo assintótico | Seção 4.7 | `E_assintotico.csv`, `figures/E_assintotico.png` |
+| IC × HPD, limitações | Seção 5 | — |
+
+Para verificar que os algoritmos estão corretos, `python -m pytest tests` compara Gibbs e MH com a
+posteriori analítica e o EMV/R² com o `statsmodels`. Para verificar a reprodutibilidade, rode o
+pipeline de novo: com as sementes de `config.py`, as tabelas saem idênticas.
+
 ## Como reproduzir
 
 O ambiente é gerenciado com o [uv](https://docs.astral.sh/uv/). Para renderizar é preciso também
@@ -107,6 +174,8 @@ predição) estão em `ib_enem_bayes/config.py`.
 │   ├── relatorio.qmd      <- relatório técnico (Quarto -> PDF)
 │   ├── slides.qmd         <- apresentação (Quarto -> Beamer PDF)
 │   ├── _common.py         <- leitura das tabelas geradas
+│   ├── references.bib     <- referências bibliográficas do relatório
+│   ├── abnt.csl           <- estilo de citação ABNT
 │   ├── figures            <- figuras geradas por `make train`
 │   └── tables             <- tabelas CSV + metadata.json
 ├── requirements.txt
