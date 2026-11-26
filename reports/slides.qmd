@@ -66,6 +66,17 @@ if META["simulado"]:
     print("## Aviso\n\n**Slides gerados com DADOS SIMULADOS** (`make demo`). Rode `make data train report` com os microdados do INEP.\n")
 ```
 
+## A pergunta
+
+- **O que queremos saber:** quanto a renda da família, o tipo de escola e a escolaridade da mãe se
+  associam à nota de Matemática do ENEM `{python} ANO`.
+- **Por que importa:** dimensionar a desigualdade de desempenho e mostrar quanto dela esses três
+  fatores, observáveis antes da prova, conseguem explicar.
+- **Com que dados:** microdados oficiais do INEP, com `{python} fmt(META["n_base_completa"],0)`
+  participantes válidos. A edição de `{python} YEAR_PRIOR` serve como conhecimento prévio.
+- **Como respondemos:** com duas escolas de estatística (a clássica e a bayesiana) aplicadas ao mesmo
+  modelo, para ver se chegam à mesma resposta.
+
 ## Em uma frase
 
 **Renda, escola e escolaridade da mãe separam os perfis analisados em até `{python} fmt(gap,0)`
@@ -81,17 +92,6 @@ kpis([
     (f"{fmt(100*AJ['r2'],0)}%", "da variação das notas explicada"),
 ])
 ```
-
-## A pergunta
-
-- **O que queremos saber:** quanto a renda da família, o tipo de escola e a escolaridade da mãe se
-  associam à nota de Matemática do ENEM `{python} ANO`.
-- **Por que importa:** dimensionar a desigualdade de desempenho e mostrar quanto dela esses três
-  fatores, observáveis antes da prova, conseguem explicar.
-- **Com que dados:** microdados oficiais do INEP, com `{python} fmt(META["n_base_completa"],0)`
-  participantes válidos. A edição de `{python} YEAR_PRIOR` serve como conhecimento prévio.
-- **Como respondemos:** com duas escolas de estatística (a clássica e a bayesiana) aplicadas ao mesmo
-  modelo, para ver se chegam à mesma resposta.
 
 ## Cada fator, sozinho, vale de `{python} fmt(efeitos.min(),0)` a `{python} fmt(efeitos.max(),0)` pontos
 
