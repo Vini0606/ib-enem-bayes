@@ -3,57 +3,55 @@
 #################################################################################
 
 PROJECT_NAME = ib-enem-bayes
-PYTHON_VERSION = 3.11
-PYTHON_INTERPRETER = python
+PYTHON_VERSION = 3.13
+
+# Tudo roda no .venv do projeto via uv. `uv run --no-project` usa o .venv da pasta
+# (sem criar uv.lock) e põe o Python dele no PATH, o que vale também para o Quarto.
+UV_RUN = uv run --no-project
+PYTHON_INTERPRETER = $(UV_RUN) python
 
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
 
-## Install Python dependencies
-.PHONY: requirements
-requirements:
-	$(PYTHON_INTERPRETER) -m pip install -U pip
-	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
-	
-
-
-
-## Delete all compiled Python files
-.PHONY: clean
-clean:
-	find . -type f -name "*.py[co]" -delete
-	find . -type d -name "__pycache__" -delete
-
-
-## Lint using ruff (use `make format` to do formatting)
-.PHONY: lint
-lint:
-	ruff format --check
-	ruff check
-
-## Format source code with ruff
-.PHONY: format
-format:
-	ruff check --fix
-	ruff format
-
-
-
-## Run tests
-.PHONY: test
-test:
-	python -m pytest tests
-
-
-## Set up Python interpreter environment
+## Cria o ambiente virtual .venv com o uv
 .PHONY: create_environment
 create_environment:
-	@bash -c "if [ ! -z `which virtualenvwrapper.sh` ]; then source `which virtualenvwrapper.sh`; mkvirtualenv $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER); else mkvirtualenv.bat $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER); fi"
-	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
-	
+	uv venv .venv --python $(PYTHON_VERSION)
+	@echo ">>> Ambiente criado em .venv. Rode: make requirements"
 
+
+## Instala as dependências e o pacote (modo editável) com o uv
+.PHONY: requirements
+requirements:
+	uv pip install -r requirements.txt
+
+
+## Apaga arquivos Python compilados (fora do .venv)
+.PHONY: clean
+clean:
+	$(PYTHON_INTERPRETER) -c "import pathlib, shutil; ps = [p for p in pathlib.Path('.').rglob('*') if '.venv' not in p.parts]; [p.unlink() for p in ps if p.suffix in ('.pyc', '.pyo')]; [shutil.rmtree(p) for p in ps if p.name == '__pycache__' and p.exists()]"
+
+
+## Lint com ruff (use `make format` para formatar)
+.PHONY: lint
+lint:
+	$(UV_RUN) ruff format --check
+	$(UV_RUN) ruff check
+
+## Formata o código com ruff
+.PHONY: format
+format:
+	$(UV_RUN) ruff check --fix
+	$(UV_RUN) ruff format
+
+
+
+## Roda os testes
+.PHONY: test
+test:
+	$(PYTHON_INTERPRETER) -m pytest tests
 
 
 #################################################################################
@@ -61,7 +59,7 @@ create_environment:
 #################################################################################
 
 
-## Baixa e limpa os microdados do ENEM (2022 = priori, 2023 = análise)
+## Lê/baixa e limpa os microdados do ENEM (2022 = priori, 2023 = análise)
 .PHONY: data
 data:
 	$(PYTHON_INTERPRETER) -m ib_enem_bayes.dataset all
@@ -83,11 +81,11 @@ train:
 train_fast:
 	$(PYTHON_INTERPRETER) -m ib_enem_bayes.modeling.train --fast
 
-## Renderiza o relatório (PDF via LaTeX) e os slides (Quarto)
+## Renderiza o relatório (PDF via LaTeX) e os slides (Quarto), com o Python do .venv
 .PHONY: report
 report:
-	cd reports && quarto render relatorio.qmd --to pdf
-	cd reports && quarto render slides.qmd
+	cd reports && $(UV_RUN) quarto render relatorio.qmd --to pdf
+	cd reports && $(UV_RUN) quarto render slides.qmd
 
 ## Pipeline completo: dados -> modelos -> testes -> relatório
 .PHONY: all

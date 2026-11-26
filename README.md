@@ -95,7 +95,25 @@ o [Quarto](https://quarto.org) e uma distribuição LaTeX com XeLaTeX (MiKTeX, T
 `quarto install tinytex`). Os blocos de código do PDF usam a fonte DejaVu Sans Mono, distribuída
 com o TeX.
 
-### 1. Ambiente
+### Com `make` (Linux, macOS ou Windows com GNU Make)
+
+O Makefile chama o uv em todos os alvos (`uv run --no-project`, que usa o `.venv` da pasta), então
+**não é preciso ativar o ambiente**, nem no Windows.
+
+```bash
+make create_environment   # uv venv .venv
+make requirements         # uv pip install -r requirements.txt (dependências + pacote editável)
+make data                 # lê/baixa e limpa os microdados ENEM 2022 e 2023 (~1,2 GB)
+make train                # Etapas A–E: tabelas, figuras e cadeias (~1,5 min)
+make test                 # amostradores vs. posteriori analítica
+make report               # reports/relatorio.pdf e reports/slides.pdf (Quarto + LaTeX)
+make lint                 # ruff
+make help                 # lista todos os alvos
+```
+
+### Sem `make`
+
+Ambiente:
 
 ```bash
 uv venv .venv                            # Python >= 3.11
@@ -109,21 +127,7 @@ source .venv/bin/activate                # Linux/macOS
 .venv\Scripts\Activate.ps1               # Windows (PowerShell)
 ```
 
-> O `uv venv` cria o ambiente **sem pip**. Por isso use `uv pip install` no lugar de
-> `make requirements`. Os demais alvos do `make` funcionam com o ambiente ativado.
-
-### 2. Pipeline
-
-Com `make` (Linux/macOS):
-
-```bash
-make data      # lê/baixa e limpa os microdados ENEM 2022 e 2023 (~1,2 GB)
-make train     # Etapas A–E: tabelas, figuras e cadeias (~1,5 min)
-make test      # amostradores vs. posteriori analítica
-make report    # reports/relatorio.pdf e reports/slides.pdf (Quarto + LaTeX)
-```
-
-Sem `make` (Windows, PowerShell, com o ambiente ativado):
+Pipeline (Windows, PowerShell, com o ambiente ativado):
 
 ```powershell
 python -m ib_enem_bayes.dataset all

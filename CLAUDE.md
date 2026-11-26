@@ -27,16 +27,23 @@ uv venv .venv                          # cria o ambiente (sem pip dentro)
 uv pip install -r requirements.txt     # dependências + pacote editável (-e .)
 ```
 
-- Novas dependências vão em `requirements.txt`; depois rode `uv pip install -r requirements.txt`.
-- `make requirements` **não funciona** num venv do uv (chama `python -m pip`); use o comando acima.
-- O ambiente de desenvolvimento é Windows sem `make`. Chame o Python do venv direto
-  (`.venv\Scripts\python -m ...`) em vez de depender de ativação, que não persiste entre comandos.
+- Novas dependências vão em `requirements.txt`; depois rode `uv pip install -r requirements.txt`
+  (ou `make requirements`, que faz o mesmo).
+- O Makefile usa `uv run --no-project` em todos os alvos: acha o `.venv` da pasta (também a partir
+  de `reports/`), não cria `uv.lock` e põe o Python do venv no PATH, então o Quarto o usa sem
+  `QUARTO_PYTHON`. Não troque por `uv run` puro: ele trataria o `pyproject.toml` como projeto uv e
+  sincronizaria o ambiente.
+- O ambiente de desenvolvimento é Windows com GNU Make 3.81 (GnuWin32); `make <alvo>` funciona no
+  PowerShell. Sem make, chame o Python do venv direto (`.venv\Scripts\python -m ...`) em vez de
+  depender de ativação, que não persiste entre comandos.
 - Para ferramentas avulsas, fora do projeto, use `uv run --no-project --with <pacote> ...`
   em vez de instalar no `.venv`.
 
 ## Comandos
 
 ```bash
+make create_environment  # uv venv .venv
+make requirements   # uv pip install -r requirements.txt
 make data           # lê data/raw/microdados_enem_{2022,2023}.zip -> data/interim -> data/processed
 make train          # pipeline A–E -> reports/tables/*.csv, reports/figures/*.png, models/*.npy
 make test           # pytest: amostradores vs. posteriori analítica
