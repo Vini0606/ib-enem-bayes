@@ -10,13 +10,19 @@ frequentista para a **nota de Matemática do ENEM**, com regressão linear e pri
 
 ## Modelo
 
+---
+
 ```math
 Y_i = \beta_0 + \beta_1 \log_2\!\left(\frac{\text{renda}_i}{\text{SM}}\right) + \beta_2\,\text{privada}_i + \beta_3\,\text{mãe superior}_i + \varepsilon_i
 ```
 
+<br>
+
 ```math
-\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2), \qquad i = 1, \dots, n
+\varepsilon_i \sim \mathcal{N}(0, \sigma^2) \ \text{independentes}, \qquad i = 1, \dots, n
 ```
+
+---
 
 em que $Y_i$ é a nota de Matemática do participante $i$; $\text{renda}_i/\text{SM}$, a renda
 familiar em salários mínimos; $\text{privada}_i$ e $\text{mãe superior}_i$, indicadoras de escola
