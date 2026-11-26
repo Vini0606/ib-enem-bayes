@@ -8,14 +8,21 @@
 frequentista para a **nota de Matemática do ENEM**, com regressão linear e priori conjugada
 **Normal–Gama(-Inversa)**.
 
+## Modelo
+
 ```math
-\large
-\begin{aligned}
-Y_i \;&=\; \beta_0 \;+\; \beta_1 \log_2\!\left(\frac{\text{renda}_i}{\text{SM}}\right) \;+\; \beta_2\,\text{privada}_i \\[10pt]
-&\quad\;+\; \beta_3\,\text{mãe superior}_i \;+\; \varepsilon_i, \\[14pt]
-\varepsilon_i \;&\sim\; \mathcal{N}\!\left(0,\, \sigma^2\right), \qquad i = 1, \dots, n
-\end{aligned}
+Y_i = \beta_0 + \beta_1 \log_2\!\left(\frac{\text{renda}_i}{\text{SM}}\right) + \beta_2\,\text{privada}_i + \beta_3\,\text{mãe superior}_i + \varepsilon_i
 ```
+
+```math
+\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2), \qquad i = 1, \dots, n
+```
+
+em que $Y_i$ é a nota de Matemática do participante $i$; $\text{renda}_i/\text{SM}$, a renda
+familiar em salários mínimos; $\text{privada}_i$ e $\text{mãe superior}_i$, indicadoras de escola
+privada e de mãe com ensino superior.
+
+## Etapas do enunciado
 
 | Etapa do enunciado | Onde está |
 |---|---|
