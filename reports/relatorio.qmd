@@ -29,6 +29,13 @@ format:
         \AtBeginEnvironment{longtable}{\small}
         \newcommand{\E}{\mathbb{E}}
         \newcommand{\Var}{\mathrm{Var}}
+    # Latin Modern Mono não tem grego nem ∫, ∝, ≈; DejaVu Sans Mono (distribuída com o TeX) tem.
+    monofont: DejaVuSansMono.ttf
+    monofontoptions:
+      - Scale=0.85
+      - BoldFont=DejaVuSansMono-Bold.ttf
+      - ItalicFont=DejaVuSansMono-Oblique.ttf
+      - BoldItalicFont=DejaVuSansMono-BoldOblique.ttf
 jupyter: python3
 execute:
   echo: true
@@ -45,6 +52,7 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path.cwd())); sys.path.insert(0, str(Path.cwd().parent))
 from IPython.display import Markdown, display
 from _common import META, tab, md, fmt
+from ib_enem_bayes.config import N0_PRIOR, YEAR_PRIOR
 A = tab("A_emv"); PV = tab("B_posteriori_exata_vaga"); PI = tab("B_posteriori_exata_informativa")
 CONV = tab("C_convergencia").reset_index(drop=True); IC = tab("E_criterios_informacao")
 PRED = tab("D_preditiva").reset_index(drop=True); PE = tab("A_predicao_emv")
@@ -70,7 +78,7 @@ da escolaridade da mãe, e compara de forma sistemática dois paradigmas de infe
 * o **bayesiano**, com priori conjugada Normal–Gama, posteriori analítica e por MCMC (Gibbs,
   Metropolis–Hastings e NUTS), distribuição preditiva a posteriori e intervalos HPD.
 
-Com milhões de participantes, a base também permite *ver* a verossimilhança dominar a priori à
+Com cerca de um milhão de participantes válidos, a base também permite *ver* a verossimilhança dominar a priori à
 medida que $n$ cresce (Seção [-@sec-assintotico]).
 
 Todo o código está no pacote `ib_enem_bayes` (estrutura *Cookiecutter Data Science v2*); este
@@ -91,7 +99,7 @@ inteira é usada no estudo assintótico.
 | $Y_i$ | `NU_NOTA_MT` | contínua (escala TRI) | nota de Matemática |
 | $x_{i1}$ | `log2_renda_sm` | contínua | $\log_2$ do ponto médio da faixa `Q006`, em salários mínimos |
 | $x_{i2}$ | `escola_privada` | binária | `TP_ESCOLA` = 3 |
-| $x_{i3}$ | `mae_superior` | binária | `Q002` ∈ {F, G} (superior ou pós) |
+| $x_{i3}$ | `mae_superior` | binária | `Q002` $\in$ {F, G} (superior ou pós) |
 
 : Variáveis do modelo. {#tbl-vars}
 
@@ -153,7 +161,7 @@ from ib_enem_bayes.modeling.frequentist import fit_mle
 
 df = subsample(pd.read_parquet(processed_path(YEAR_MAIN)), SAMPLE_N, SEED)
 y, X = df[RESPONSE].to_numpy(), df[FEATURES].to_numpy()
-mle = fit_mle(y, X)            # forma fechada + J(θ̂) analítica e numérica
+mle = fit_mle(y, X)            # forma fechada + J(theta_hat) analítica e numérica
 # conferência: J analítica vs. Hessiana numérica (diferenças finitas)
 print("máx. |J_analítica - J_numérica| / |J| =",
       f"{np.max(np.abs(mle.fisher_obs - mle.fisher_numeric)) / np.max(np.abs(mle.fisher_obs)):.1e}")
@@ -265,7 +273,7 @@ especificação e as mesmas variáveis. Procedimento (Ibrahim & Chen, 2000):
 1. calcula-se a posteriori de Jeffreys com os dados do ano anterior,
    $\mathrm{NIG}(\bm m^*, \bm\Lambda^*, a^*, b^*)$;
 2. a informação é **rebaixada** para equivaler a $n_0$ observações, para que a base anterior
-   (milhões de linhas) não "engula" o ano corrente e para que o peso da priori seja explícito:
+   (quase um milhão de linhas) não "engula" o ano corrente e para que o peso da priori seja explícito:
 
 $$
 \bm m_0 = \bm m^*,\qquad \bm\Lambda_0 = \frac{n_0}{n_{ant}}\bm\Lambda^*,\qquad a_0 = \frac{n_0}{2},\qquad b_0 = a_0\,\frac{b^*}{a^*}.
@@ -278,9 +286,21 @@ $n_{ant}/n_0$ vezes maior que a variância a posteriori do ano anterior. Os hipe
 #| echo: false
 #| output: asis
 #| label: tbl-hiper
-#| tbl-cap: "Hiperparâmetros da priori informativa (m0, DP marginal de β, a0 e b0)."
+#| tbl-cap: "Hiperparâmetros da priori informativa ($\\bm m_0$, DP marginal de $\\bm\\beta$, $a_0$ e $b_0$)."
 print(md(tab("B_hiperparametros_informativa"), ".3f"))
 ```
+
+```{python}
+#| echo: false
+HI = tab("B_hiperparametros_informativa")
+```
+
+A priori é coerente com o ano corrente em $\beta_0$, $\beta_1$ e $\beta_3$, mas não em $\beta_2$: no ENEM
+`{python} YEAR_PRIOR` a diferença privada − pública era de
+`{python} fmt(HI.loc["beta_2","m0"],1)` pontos, contra `{python} fmt(A.loc["beta_2","estimativa"],1)`
+no EMV de 2023. Como o DP a priori de $\beta_2$ (`{python} fmt(HI.loc["beta_2","dp_marginal_beta"],1)`)
+é largo, o conflito é moderado: a média a posteriori de $\beta_2$ é puxada para
+`{python} fmt(PI.loc["beta_2","media"],1)`, e os demais coeficientes quase não mudam (@tbl-post-exata).
 
 ```{python}
 # Etapa B — código (ib_enem_bayes/modeling/conjugate.py)
@@ -364,7 +384,7 @@ Critério adotado: $\hat R < 1{,}01$ e ESS > 400 para todos os parâmetros.
 #| echo: false
 #| output: asis
 #| label: tbl-conv
-#| tbl-cap: "Diagnósticos formais: R̂ de Gelman–Rubin (clássico) e rank-normalized, ESS bulk/tail e autocorrelação de defasagem 1."
+#| tbl-cap: "Diagnósticos formais: $\\hat R$ de Gelman–Rubin (clássico) e rank-normalized, ESS bulk/tail e autocorrelação de defasagem 1."
 ab = {"Gibbs": "Gibbs", "Metropolis–Hastings": "MH", "PyMC (NUTS)": "NUTS"}
 c = CONV.assign(amostrador=CONV.amostrador.map(ab), ok=CONV.convergiu.map({True: "sim", False: "não"}))
 c = c[["cenario","amostrador","parametro","rhat_gelman_rubin","rhat_rank","ess_bulk","ess_tail","acf_lag1","ok"]]
@@ -380,8 +400,8 @@ g = CONV[CONV.amostrador == "Gibbs"]
 
 O Gibbs gera amostras quase independentes (ACF lag-1 máxima de `{python} fmt(g.acf_lag1.max(),2)`),
 pois $\bm\beta$ é amostrado em bloco. O MH, com taxa de aceitação de
-`{python} fmt(100*mh.taxa_aceitacao.mean(),1)`% (perto do ótimo teórico de 23–25% em dimensão
-moderada), é bem mais autocorrelacionado: ESS bulk mínimo de `{python} fmt(mh.ess_bulk.min(),0)`
+`{python} fmt(100*mh.taxa_aceitacao.mean(),1)`% (próxima do ótimo teórico para dimensão baixa, que
+vai de 44% em $d = 1$ a 23,4% quando $d \to \infty$; Gelman, Roberts & Gilks, 1996), é bem mais autocorrelacionado: ESS bulk mínimo de `{python} fmt(mh.ess_bulk.min(),0)`
 contra `{python} fmt(g.ess_bulk.min(),0)` do Gibbs, com o mesmo número de iterações. Todos os
 critérios atendidos: **`{python} "sim" if META["todos_convergiram"] else "não — aumentar N_DRAWS/afinamento do MH em config.py"`**.
 
@@ -457,9 +477,17 @@ print(md(pr, ".1f", index=False))
 
 ![Checagem preditiva a posteriori: densidade de Y observado vs. réplicas da preditiva.](figures/D_ppc.png){#fig-ppc width=65%}
 
-A checagem preditiva (@fig-ppc) mostra onde o modelo normal homocedástico é limitado: a nota do
-ENEM tem assimetria e piso na escala TRI, que a Normal não captura. Extensões naturais são
-uma verossimilhança $t$ ou skew-normal, ou variância por grupo.
+Os HPDs de Monte Carlo ficam a poucos pontos dos exatos. A diferença é erro de Monte Carlo nos
+extremos do intervalo: com $S =$ `{python} fmt(META["n_cadeias"]*META["n_draws"],0)` amostras, os
+limites do HPD variam alguns pontos de uma semente para outra, e o erro some quando $S$ aumenta.
+
+A checagem preditiva (@fig-ppc) mostra onde o modelo normal homocedástico é limitado. A nota
+observada tem assimetria à direita e um piso na escala TRI (mínimo de
+`{python} fmt(tab("descritivas_amostra").loc["nota_mt","min"],1)` pontos na amostra). As réplicas
+põem massa abaixo desse piso, subestimam a concentração de notas entre 380 e 480 e não reproduzem o
+"ombro" em torno de 600 pontos, que sugere uma mistura de subpopulações (como os alunos da rede
+privada). Extensões naturais são uma verossimilhança skew-normal ou censurada no piso, variância por
+tipo de escola ou um termo de interação.
 
 # Etapa E — Análise comparativa
 
@@ -510,8 +538,10 @@ aic = IC.loc["EMV","aic"]; waic_v = IC.loc["Bayes — Vaga","waic"]
 ```
 
 Com $n$ grande e priori vaga, AIC (`{python} fmt(aic,1)`), DIC, WAIC (`{python} fmt(waic_v,1)`) e
-LOOIC praticamente coincidem: o número efetivo de parâmetros ($p_{\mathrm{WAIC}} \approx p_{\mathrm{LOO}} \approx 5$)
-recupera os $k = 5$ parâmetros do AIC. A diferença conceitual permanece: AIC/BIC avaliam o
+LOOIC praticamente coincidem: o número efetivo de parâmetros sob a priori vaga
+($p_{\mathrm{WAIC}} =$ `{python} fmt(IC.loc["Bayes — Vaga","p_waic"],2)`) recupera os $k = 5$
+parâmetros do AIC. Sob a priori informativa ele cai para
+`{python} fmt(IC.loc["Bayes — Informativa","p_waic"],2)`, porque a priori restringe os coeficientes. A diferença conceitual permanece: AIC/BIC avaliam o
 **estimador pontual** $\hat{\bm\theta}$, enquanto WAIC/LOO avaliam a **preditiva a posteriori inteira**,
 incorporando a incerteza sobre $\bm\theta$. O BIC penaliza mais ($\log n > 2$) e aproxima $-2\log p(\bm Y)$
 — cujo valor exato, sob a priori informativa (própria), é
@@ -528,7 +558,7 @@ IC do EMV:
 ![Estimativas e intervalos de 95% em função de n. A priori informativa dá intervalos mais estreitos e estimativas mais estáveis quando n é pequeno; para n grande, as três abordagens se tornam indistinguíveis (teorema de Bernstein–von Mises).](figures/E_assintotico.png){#fig-assint width=100%}
 
 A amplitude dos intervalos cai a uma taxa $\propto n^{-1/2}$ (reta de inclinação $-1/2$ em escala
-log-log). Com $n$ pequeno, a priori informativa equivale a acrescentar $n_0 =$ 500 observações
+log-log). Com $n$ pequeno, a priori informativa equivale a acrescentar $n_0 =$ `{python} N0_PRIOR` observações
 "fictícias" do ano anterior e domina; quando $n \gg n_0$, a verossimilhança domina e EMV, Bayes-vago e
 Bayes-informativo convergem.
 
@@ -563,17 +593,22 @@ Mesmo quando os números coincidem (Jeffreys × EMV, @tbl-lado), as afirmações
 1. Renda familiar, escola privada e escolaridade materna estão positivamente associadas à nota de
    Matemática; as três abordagens concordam em sinal, magnitude e incerteza para o $n$ analisado.
 2. A posteriori conjugada NIG permite validar três algoritmos MCMC contra a solução exata; os três
-   convergem, e o Gibbs é o mais eficiente (ESS ≈ número de iterações), enquanto o MH exige mais iterações.
+   convergem, e o Gibbs é o mais eficiente (ESS $\approx$ número de iterações), enquanto o MH exige mais iterações.
 3. A preditiva a posteriori, obtida analiticamente (t de Student) e por composição de Monte Carlo,
    incorpora a incerteza sobre $\bm\theta$ e fornece HPDs diretamente interpretáveis.
 4. A priori informativa importa para amostras pequenas e se torna irrelevante quando $n \gg n_0$.
-   A escolha entre paradigmas é, sobretudo, interpretativa.
+   O único conflito entre priori e dados está no efeito da escola privada, bem menor em
+   `{python} YEAR_PRIOR` do que em `{python} META["ano_principal"]`. A escolha entre paradigmas é,
+   sobretudo, interpretativa.
+5. O modelo normal homocedástico capta bem a média condicional, mas não a forma da distribuição das
+   notas (assimetria, piso da escala TRI), como mostra a checagem preditiva.
 
 # Referências {.unnumbered}
 
 * Chen, M.-H.; Shao, Q.-M. (1999). Monte Carlo estimation of Bayesian credible and HPD intervals. *JCGS*, 8(1), 69–92.
 * Gamerman, D.; Lopes, H. F. (2006). *Markov Chain Monte Carlo*. 2. ed. Chapman & Hall/CRC.
 * Gelman, A. et al. (2014). *Bayesian Data Analysis*. 3. ed. CRC Press.
+* Gelman, A.; Roberts, G. O.; Gilks, W. R. (1996). Efficient Metropolis jumping rules. In: *Bayesian Statistics 5*, 599–607. Oxford University Press.
 * Gelman, A.; Rubin, D. B. (1992). Inference from iterative simulation using multiple sequences. *Statistical Science*, 7(4), 457–472.
 * Ibrahim, J. G.; Chen, M.-H. (2000). Power prior distributions for regression models. *Statistical Science*, 15(1), 46–60.
 * INEP. Microdados do ENEM. <https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/enem>.
@@ -594,5 +629,5 @@ from ib_enem_bayes.config import PROJ_ROOT
 for f in ["modeling/frequentist.py", "modeling/conjugate.py", "modeling/samplers.py",
           "modeling/pymc_model.py", "diagnostics.py", "predictive.py", "compare.py"]:
     print(f"\n## `ib_enem_bayes/{f}` {{.unnumbered}}\n\n```python\n"
-          + (PROJ_ROOT / "ib_enem_bayes" / f).read_text() + "\n```\n")
+          + (PROJ_ROOT / "ib_enem_bayes" / f).read_text(encoding="utf-8") + "\n```\n")
 ```

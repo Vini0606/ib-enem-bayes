@@ -1,0 +1,16 @@
+{
+  "simulado": false,
+  "ano_principal": 2023,
+  "n_base_completa": 1008903,
+  "n_amostra": 5000,
+  "fonte_priori_informativa": "ENEM 2022 (n = 925,701), power prior com n0 = 500",
+  "n_cadeias": 4,
+  "n_draws": 5000,
+  "n_burnin": 1000,
+  "log_evidencia": {
+    "Vaga": NaN,
+    "Informativa": -30395.95292706198
+  },
+  "todos_convergiram": true,
+  "tempo_s": 93.2
+}

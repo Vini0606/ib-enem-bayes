@@ -233,7 +233,8 @@ def main(
         "tempo_s": round(time.time() - t0, 1),
     }
     (TABLES_DIR / "metadata.json").write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False, default=float)
+        json.dumps(meta, indent=2, ensure_ascii=False, default=float),
+        encoding="utf-8",
     )
     logger.success(f"Pipeline concluído em {meta['tempo_s']} s.")
 

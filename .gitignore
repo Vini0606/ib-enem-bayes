@@ -194,8 +194,3 @@ cython_debug/
 reports/*_files/
 reports/*.tex
 models/*.npy
-# Saídas geradas pelo pipeline. Depois de rodar com os dados REAIS do INEP,
-# remova as 3 linhas abaixo para versionar tabelas, figuras e PDFs finais.
-reports/tables/
-reports/figures/*.png
-reports/*.pdf

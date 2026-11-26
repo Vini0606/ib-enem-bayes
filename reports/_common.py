@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TAB = ROOT / "reports" / "tables"
 FIG = "figures"  # relativo a reports/
 
-META = json.loads((TAB / "metadata.json").read_text())
+META = json.loads((TAB / "metadata.json").read_text(encoding="utf-8"))
 
 NOMES = {
     "beta_0": r"$\beta_0$",

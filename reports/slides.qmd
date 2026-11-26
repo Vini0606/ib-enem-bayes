@@ -16,6 +16,9 @@ format:
         \newcommand{\bm}[1]{\symbfit{#1}}
         \setbeamertemplate{caption}{\raggedright\insertcaption\par}
         \setbeamerfont{caption}{size=\scriptsize}
+        \usepackage{newunicodechar}
+        \newunicodechar{≈}{\ensuremath{\approx}}
+        \newunicodechar{−}{\ensuremath{-}}
 jupyter: python3
 execute:
   echo: false
@@ -28,6 +31,7 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path.cwd())); sys.path.insert(0, str(Path.cwd().parent))
 from _common import META, tab, md, fmt
+from ib_enem_bayes.config import N0_PRIOR, YEAR_PRIOR
 A = tab("A_emv"); PV = tab("B_posteriori_exata_vaga"); PI = tab("B_posteriori_exata_informativa")
 CONV = tab("C_convergencia").reset_index(drop=True); IC = tab("E_criterios_informacao")
 mh = CONV[CONV.amostrador == "Metropolis–Hastings"]; g = CONV[CONV.amostrador == "Gibbs"]
@@ -98,7 +102,7 @@ $$
 
 - **(a) Vaga — Jeffreys:** $p(\bm\beta,\sigma^2)\propto 1/\sigma^2$ ($\bm\Lambda_0=\bm 0$, $a_0=-p/2$, $b_0=0$)
   $\Rightarrow \bm\beta\mid\bm Y\sim t_{n-p}(\hat{\bm\beta}, s^2(\bm X^\top\bm X)^{-1})$, **centrada no EMV**.
-- **(b) Informativa — power prior:** posteriori do ENEM anterior, rebaixada para valer $n_0 = 500$ observações:
+- **(b) Informativa — power prior:** posteriori do ENEM anterior, rebaixada para valer $n_0 =$ `{python} N0_PRIOR` observações:
   $\bm m_0=\bm m^*$, $\bm\Lambda_0 = \tfrac{n_0}{n_{ant}}\bm\Lambda^*$, $a_0 = n_0/2$, $b_0 = a_0 b^*/a^*$.
 
 ![](figures/B_priori_verossimilhanca_posteriori.png){width=92%}
@@ -156,12 +160,21 @@ Monte Carlo por composição: $\bm\theta^{(s)}\sim p(\bm\theta\mid\bm Y)$, depoi
 
 ![](figures/D_preditiva.png){width=95%}
 
+## Etapa D — Checagem preditiva
+
+![](figures/D_ppc.png){width=48%}
+
+- Réplicas põem massa abaixo do piso TRI (mín. observado `{python} fmt(tab("descritivas_amostra").loc["nota_mt","min"],0)`) e subestimam as notas entre 380 e 480.
+- A Normal acerta a média condicional, não a forma: skew-normal, censura ou variância por escola.
+
 ## Etapa E — EMV × Bayes
 
 ![](figures/E_forest.png){width=100%}
 
 - Jeffreys reproduz o EMV (centro idêntico; intervalo $t_{n-p}$ vs. $z$).
-- A priori informativa encurta levemente os intervalos e puxa as estimativas na direção de $\bm m_0$.
+- A priori informativa encurta levemente os intervalos e puxa as estimativas na direção de $\bm m_0$,
+  sobretudo $\beta_2$: `{python} fmt(A.loc["beta_2","estimativa"],1)` (EMV) $\to$ `{python} fmt(PI.loc["beta_2","media"],1)`,
+  pois em `{python} YEAR_PRIOR` a diferença privada − pública era menor (`{python} fmt(tab("B_hiperparametros_informativa").loc["beta_2","m0"],1)`).
 
 ## Etapa E — Critérios de informação
 
@@ -173,7 +186,8 @@ icT.index = ["AIC","BIC","DIC","WAIC","p_WAIC","LOOIC","p_LOO","máx. k Pareto"]
 print(icT.to_markdown(floatfmt=".1f").replace("nan", "—"))
 ```
 
-- AIC ≈ DIC ≈ WAIC ≈ LOOIC com $n$ grande, e $p_{\mathrm{WAIC}}\approx p_{\mathrm{LOO}}\approx k = 5$.
+- AIC ≈ DIC ≈ WAIC ≈ LOOIC com $n$ grande; sob a priori vaga, $p_{\mathrm{WAIC}}\approx p_{\mathrm{LOO}}\approx k = 5$ (menor sob a informativa).
+- Máx. $\hat k$ de Pareto = `{python} fmt(IC["pareto_k_max"].max(),2)` < 0,7: PSIS-LOO confiável.
 - AIC/BIC avaliam $\hat{\bm\theta}$; WAIC/LOO avaliam a **preditiva inteira**.
 
 ## Dominância da verossimilhança
