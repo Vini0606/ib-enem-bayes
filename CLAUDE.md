@@ -18,10 +18,25 @@ Regressão linear para a nota de Matemática do ENEM 2023 (`NU_NOTA_MT`) com
 
 O enunciado exige notação científica: parâmetros em letras gregas (β, σ², θ), estimadores com circunflexo.
 
+## Ambiente (uv)
+
+Use **somente o uv** para gerenciar o ambiente; nada de `pip`, `venv` ou conda direto.
+
+```bash
+uv venv .venv                          # cria o ambiente (sem pip dentro)
+uv pip install -r requirements.txt     # dependências + pacote editável (-e .)
+```
+
+- Novas dependências vão em `requirements.txt`; depois rode `uv pip install -r requirements.txt`.
+- `make requirements` **não funciona** num venv do uv (chama `python -m pip`); use o comando acima.
+- O ambiente de desenvolvimento é Windows sem `make`. Chame o Python do venv direto
+  (`.venv\Scripts\python -m ...`) em vez de depender de ativação, que não persiste entre comandos.
+- Para ferramentas avulsas, fora do projeto, use `uv run --no-project --with <pacote> ...`
+  em vez de instalar no `.venv`.
+
 ## Comandos
 
 ```bash
-make requirements   # instala dependências e o pacote (-e .)
 make data           # lê data/raw/microdados_enem_{2022,2023}.zip -> data/interim -> data/processed
 make train          # pipeline A–E -> reports/tables/*.csv, reports/figures/*.png, models/*.npy
 make test           # pytest: amostradores vs. posteriori analítica
@@ -29,9 +44,26 @@ make report         # quarto: reports/relatorio.pdf e reports/slides.pdf
 make demo           # tudo com dados SIMULADOS (só para testar; nunca entregar)
 ```
 
-Sem `make` (Windows): `python -m ib_enem_bayes.dataset all`, `python -m ib_enem_bayes.features`,
-`python -m ib_enem_bayes.modeling.train`, `python -m pytest tests`,
-`cd reports && quarto render relatorio.qmd --to pdf && quarto render slides.qmd`.
+Sem `make` (Windows, PowerShell, a partir da raiz):
+
+```powershell
+.venv\Scripts\python -m ib_enem_bayes.dataset all
+.venv\Scripts\python -m ib_enem_bayes.features
+.venv\Scripts\python -m ib_enem_bayes.modeling.train      # ~1,5 min
+.venv\Scripts\python -m pytest tests
+.venv\Scripts\ruff check ib_enem_bayes
+$env:QUARTO_PYTHON = (Resolve-Path .venv\Scripts\python.exe).Path
+$env:PATH = (Resolve-Path .venv\Scripts).Path + ";" + $env:PATH
+cd reports; quarto render relatorio.qmd --to pdf; quarto render slides.qmd
+```
+
+Notas de renderização:
+- Sem `QUARTO_PYTHON` apontando para o venv, o Quarto usa outro Python e não acha o pacote.
+- Abra arquivos de texto sempre com `encoding="utf-8"`: o padrão do Windows (cp1252) quebra.
+- A Latin Modern não tem grego nem ∫, ∝, ≈ fora do modo matemático. No texto corrido do `.qmd`,
+  escreva em LaTeX (`$\beta$`, `$\approx$`). O código usa DejaVu Sans Mono (`monofont` no YAML).
+  No relatório, não use `newunicodechar` para isso: ele quebra em linhas longas de código com o
+  `breakanywhere` do fvextra. Nos slides, que não têm blocos de código, ele mapeia ≈ e −.
 
 Configurações do analista (amostra, cadeias, n0, perfis de predição): `ib_enem_bayes/config.py`.
 
@@ -60,4 +92,5 @@ Depois de `make train`, verifique e reporte, nesta ordem:
    Introdução, interpretação do EMV, Etapa D e Conclusões. Algumas frases foram escritas antes dos
    resultados reais: confirme cada afirmação contra as tabelas e corrija o que não se sustentar.
 9. `make report`, abra os PDFs e confira: tabelas sem estouro de margem, figuras legíveis, sem aviso de simulado.
-10. Remova as 3 últimas linhas do `.gitignore` (tabelas, figuras e PDFs) e faça commit dos resultados finais.
+10. Faça commit dos resultados finais. Tabelas, figuras e PDFs já são versionados; os dados e as
+    cadeias `models/*.npy` continuam ignorados.

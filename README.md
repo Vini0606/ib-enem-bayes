@@ -23,26 +23,65 @@ $$
 
 ## Como reproduzir
 
+O ambiente é gerenciado com o [uv](https://docs.astral.sh/uv/). Para renderizar é preciso também
+o [Quarto](https://quarto.org) e uma distribuição LaTeX com XeLaTeX (MiKTeX, TeX Live ou
+`quarto install tinytex`). Os blocos de código do PDF usam a fonte DejaVu Sans Mono, distribuída
+com o TeX.
+
+### 1. Ambiente
+
 ```bash
-make create_environment          # ou: python -m venv .venv && source .venv/bin/activate
-make requirements                # instala dependências + o pacote em modo editável
-make data                        # baixa e limpa os microdados ENEM 2022 e 2023 (~1,2 GB)
-make train                       # Etapas A–E: tabelas, figuras e cadeias (~1 min)
-make test                        # amostradores vs. posteriori analítica
-make report                      # reports/relatorio.pdf e reports/slides.pdf (Quarto + LaTeX)
+uv venv .venv                            # Python >= 3.11
+uv pip install -r requirements.txt       # dependências + o pacote em modo editável (-e .)
 ```
 
-Para renderizar é preciso ter o [Quarto](https://quarto.org) e uma distribuição LaTeX com XeLaTeX
-(TeX Live/MiKTeX ou `quarto install tinytex`).
+Ative o ambiente antes dos passos seguintes:
+
+```bash
+source .venv/bin/activate                # Linux/macOS
+.venv\Scripts\Activate.ps1               # Windows (PowerShell)
+```
+
+> O `uv venv` cria o ambiente **sem pip**. Por isso use `uv pip install` no lugar de
+> `make requirements`. Os demais alvos do `make` funcionam com o ambiente ativado.
+
+### 2. Pipeline
+
+Com `make` (Linux/macOS):
+
+```bash
+make data      # lê/baixa e limpa os microdados ENEM 2022 e 2023 (~1,2 GB)
+make train     # Etapas A–E: tabelas, figuras e cadeias (~1,5 min)
+make test      # amostradores vs. posteriori analítica
+make report    # reports/relatorio.pdf e reports/slides.pdf (Quarto + LaTeX)
+```
+
+Sem `make` (Windows, PowerShell, com o ambiente ativado):
+
+```powershell
+python -m ib_enem_bayes.dataset all
+python -m ib_enem_bayes.features
+python -m ib_enem_bayes.modeling.train
+python -m pytest tests
+ruff check ib_enem_bayes
+$env:QUARTO_PYTHON = (Resolve-Path .venv\Scripts\python.exe).Path   # Quarto usa o Python do venv
+cd reports; quarto render relatorio.qmd --to pdf; quarto render slides.qmd; cd ..
+```
+
+Sem ativar o ambiente, chame o Python dele direto: `.venv\Scripts\python -m ib_enem_bayes.modeling.train`
+(ou `.venv/bin/python` no Linux/macOS). Para incluir um pacote novo, adicione-o a
+`requirements.txt` e rode `uv pip install -r requirements.txt` de novo.
 
 **Se o download do INEP falhar** (é comum o site ficar instável ou dar erro de certificado), baixe
 os zips pelo navegador em
 <https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/enem>, salve como
-`data/raw/microdados_enem_2022.zip` e `data/raw/microdados_enem_2023.zip` e rode `make data` de novo.
+`data/raw/microdados_enem_2022.zip` e `data/raw/microdados_enem_2023.zip` e rode `make data`
+(ou `python -m ib_enem_bayes.dataset all`) de novo.
 Se só o ano de 2023 estiver disponível, a priori informativa cai automaticamente para a elicitação
 em `config.LITERATURE_PRIOR`. Nesse caso, preencha esses valores com referências.
 
-**Teste sem baixar nada:** `make demo` gera dados *simulados* com o mesmo formato e roda tudo.
+**Teste sem baixar nada:** `make demo` (ou `python -m ib_enem_bayes.simulate` seguido dos passos de
+features, train e report) gera dados *simulados* com o mesmo formato e roda tudo.
 Relatório e slides saem com um aviso de "DADOS SIMULADOS"; **não entregue essa versão**.
 
 Todas as escolhas do analista (tamanho da amostra, número de cadeias, `n0` da priori, perfis de
