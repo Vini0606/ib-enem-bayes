@@ -7,7 +7,7 @@ name = "ib_enem_bayes"
 version = "0.0.1"
 description = "Regressao linear bayesiana Normal-Gama vs EMV - nota de Matematica no ENEM"
 authors = [
-  { name = "Seu Nome" },
+  { name = "Vinicius de Paula Ribeiro" },
 ]
 license = { file = "LICENSE" }
 readme = "README.md"

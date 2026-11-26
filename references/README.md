@@ -5,4 +5,4 @@
 - Faixas de `Q006` convertidas para salários mínimos em `ib_enem_bayes/config.py::Q006_SM`
   (SM 2022 = R$ 1.212; SM 2023 = R$ 1.320).
 - Ibrahim & Chen (2000), *Power prior distributions for regression models* — base do cenário de priori informativa.
-- Material da disciplina: apostila de Inferência Bayesiana (cap. 3, prioris conjugadas; cap. 8, Gibbs) e Módulos 03, 05 e 06.
+- Material da disciplina (CIA044, Profª Simone de Araújo Góes Assis, IESB): apostila de Inferência Bayesiana (cap. 3, prioris conjugadas; cap. 8, Gibbs) e Módulos 03, 05 e 06.

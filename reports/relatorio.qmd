@@ -1,7 +1,7 @@
 ---
 title: "Modelagem e Predição Bayesiana vs. Abordagem Frequentista"
 subtitle: "Regressão linear Normal–Gama para a nota de Matemática do ENEM"
-author: "Seu Nome"
+author: "Vinicius de Paula Ribeiro"
 date: today
 date-format: "DD/MM/YYYY"
 lang: pt-BR
