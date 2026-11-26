@@ -8,10 +8,10 @@
 frequentista para a **nota de Matemática do ENEM**, com regressão linear e priori conjugada
 **Normal–Gama(-Inversa)**.
 
-$$
-Y_i = \beta_0 + \beta_1 \log_2(\text{renda}_i/\text{SM}) + \beta_2\,\text{privada}_i + \beta_3\,\text{mãe\_superior}_i + \varepsilon_i,
+```math
+Y_i = \beta_0 + \beta_1 \log_2(\text{renda}_i/\text{SM}) + \beta_2\,\text{privada}_i + \beta_3\,\text{mãe superior}_i + \varepsilon_i,
 \qquad \varepsilon_i \sim \mathcal N(0, \sigma^2)
-$$
+```
 
 | Etapa do enunciado | Onde está |
 |---|---|
